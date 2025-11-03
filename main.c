@@ -35,10 +35,8 @@ int obter_id_pagina(int endereco_virtual) {
     return endereco_virtual / TAMANHO_PAGINA;
 }
 
-void mostrar_estado_atual();
 void escrever_no_disco(int id_pagina, char *dados_a_escrever);
 void carregar_do_disco(int id_pagina, char *dados_a_carregar_em);
-void tratar_falha_pagina(int id_pagina, char operacao, char valor, int offset);
 
 
 bool acessar_memoria(int endereco_virtual, char operacao, char valor) {
@@ -93,4 +91,61 @@ void inicializar_sistema() {
         memset(quadros_memoria[i].dados, 0, TAMANHO_PAGINA);
     }
     printf("Sistema Inicializado. Quadros disponíveis: %d\n\n", NUMERO_QUADROS);
+}
+
+void mostrar_estado_atual() {
+    printf("\n--- ESTADO ATUAL ---\n");
+    printf("Memória (Quadros): ");
+    for (int i = 0; i < NUMERO_QUADROS; i++) {
+        int id_pag = quadros_memoria[i].id_pagina_virtual;
+        if (id_pag != -1) {
+            bool modificado = tabela_paginas[id_pag].modificado;
+            int tempo_c = tabela_paginas[id_pag].tempo_carregamento;
+            printf("[Q%d: P%d (FIFO: %d, Modificado: %s)] ", i, id_pag, tempo_c, modificado ? "S" : "N");
+        } else {
+            printf("[Q%d: Vazio] ", i);
+        }
+    }
+    printf("\nPróxima Vítima FIFO: Quadro %d\n", proximo_quadro_fifo);
+    printf("Falhas de Página Totais: %d\n", total_falhas_pagina);
+    printf("--------------------\n");
+}
+
+void tratar_falha_pagina(int id_pagina, char operacao, char valor, int offset) {
+    int quadro_vitima = proximo_quadro_fifo;
+    int id_pagina_vitima = quadros_memoria[quadro_vitima].id_pagina_virtual;
+
+    printf("  [FIFO] Quadro %d selecionado como VÍTIMA (Continha P%d).\n", quadro_vitima, id_pagina_vitima);
+
+    if (id_pagina_vitima != -1) {
+        tabela_paginas[id_pagina_vitima].presente = false;
+        tabela_paginas[id_pagina_vitima].id_quadro_fisico = -1;
+
+        if (tabela_paginas[id_pagina_vitima].modificado) {
+            printf("  [SWAP OUT PENDENTE] Página %d estava 'Modificado' e precisa ser escrita no Disco.\n", id_pagina_vitima);
+            tabela_paginas[id_pagina_vitima].modificado = false;
+        } else {
+            printf("  [SWAP OUT PENDENTE] Página %d estava 'Limpa', pode ser descartada.\n", id_pagina_vitima);
+        }
+    }
+
+    printf("  [SWAP IN PENDENTE] Carregando Página %d do Disco para o Quadro %d.\n", id_pagina, quadro_vitima);
+
+    quadros_memoria[quadro_vitima].id_pagina_virtual = id_pagina;
+    
+    EntradaTabelaPaginas *entrada_pte = &tabela_paginas[id_pagina];
+    entrada_pte->id_quadro_fisico = quadro_vitima;
+    entrada_pte->presente = true;
+    entrada_pte->tempo_carregamento = ++tempo_global;
+    entrada_pte->modificado = false;
+
+    if (operacao == 'W') {
+        quadros_memoria[quadro_vitima].dados[offset] = valor;
+        entrada_pte->modificado = true;
+        printf("  Operação 'W' aplicada. Quadro %d marcado como 'Modificado'.\n", quadro_vitima);
+    } else {
+         printf("  Operação 'R' aplicada. Dados lidos: '%c' (inicialmente '%c' do disco).\n", quadros_memoria[quadro_vitima].dados[offset], armazenamento_disco[id_pagina].dados[offset]);
+    }
+
+    proximo_quadro_fifo = (proximo_quadro_fifo + 1) % NUMERO_QUADROS;
 }

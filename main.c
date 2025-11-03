@@ -163,3 +163,35 @@ bool acessar_memoria(int endereco_virtual, char operacao, char valor) {
         return false;
     }
 }
+
+int main() {
+    inicializar_sistema();
+
+    printf("--- SIMULAÇÃO DE ACESSO À MEMÓRIA ---\n");
+    
+    acessar_memoria(0, 'R', 0);    
+    acessar_memoria(1024, 'R', 0); 
+    acessar_memoria(2048, 'R', 0); 
+    acessar_memoria(3072, 'R', 0); 
+    mostrar_estado_atual();
+
+    acessar_memoria(1024, 'W', 'X'); 
+    mostrar_estado_atual();
+    
+    acessar_memoria(4096, 'R', 0); 
+    mostrar_estado_atual();
+    
+    acessar_memoria(5120, 'R', 0); 
+    mostrar_estado_atual();
+
+    acessar_memoria(4096, 'W', 'Z'); 
+    mostrar_estado_atual();
+
+    acessar_memoria(6144, 'R', 0);
+    mostrar_estado_atual();
+    
+    printf("\n--- SIMULAÇÃO FINALIZADA ---\n");
+    printf("Total de Falhas de Página: %d\n", total_falhas_pagina);
+    
+    return 0;
+}
